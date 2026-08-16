@@ -57,16 +57,11 @@ openssl rand -base64 32
    - `SESSION_SECRET` → a long random string (see command above)
    - `ADMIN_USERNAME` → your chosen admin username
    - `ADMIN_PASSWORD` → your chosen admin password
-5. Railway builds automatically via `npm run build` (which runs `prisma generate` first via the
-   `postinstall`/`build` scripts).
-6. After the first deploy, run the migration + seed once, either via Railway's web shell for the
-   service, or via the Railway CLI from your machine:
-   ```bash
-   railway run npm run db:push
-   railway run npm run db:seed
-   ```
-7. Generate a public domain for the service (Settings → Networking → Generate Domain).
-8. **Change the admin password** after your first login — the seed script only sets it once.
+5. Railway builds automatically via `npm run build`. On every start, `npm run start` also runs
+   `prisma db push` (creates/updates tables) and the seed script (idempotent — only creates
+   what's missing) before starting the server, so the database is ready with no manual step.
+6. Generate a public domain for the service (Settings → Networking → Generate Domain).
+7. **Change the admin password** after your first login — the seed script only sets it once.
 
 ## Pushing this folder to GitHub
 
