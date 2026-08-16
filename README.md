@@ -1,36 +1,98 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AutoParts Hub — car accessories ecommerce
 
-## Getting Started
+A Next.js (App Router, TypeScript) storefront + admin back office for selling car accessories,
+organized by brand → model. Customers pick their car's brand and model to see only the
+accessories that fit; checkout is cash-on-delivery (no payment gateway required). Admins manage
+brands, models, accessories (quantity, storage location, buy/sell price, profit), and orders
+(submitted → confirmed → processing → shipped → delivered, or canceled).
 
-First, run the development server:
+## Stack
+
+- Next.js 15 (App Router, Server Actions, TypeScript, Tailwind CSS v4)
+- PostgreSQL + Prisma ORM
+- Cookie-based admin session (JWT via `jose`, password hashed with `bcryptjs`)
+- No external payment provider — checkout is cash on delivery
+
+## Project structure
+
+- `src/app/(site)/...` — public storefront (brand grid → model grid → accessories → product →
+  cart → checkout → order confirmation)
+- `src/app/admin/...` — admin back office, protected by `src/middleware.ts`
+  - `src/app/admin/login` — sign-in page
+  - `src/app/admin/(dashboard)` — dashboard, brands & models, accessories & stock, orders
+- `prisma/schema.prisma` — data model (Brand, Model, Accessory, Order, OrderItem, Admin)
+- `prisma/seed.ts` — seeds a starter catalog (Toyota, Honda, Ford, BMW with a few models and
+  accessories each) plus the first admin account
+
+## Running locally
+
+You'll need Node.js 20+ and a PostgreSQL database (a free one from Railway, Neon, or Supabase
+works fine, or run Postgres locally / via Docker).
 
 ```bash
+npm install
+cp .env.example .env   # then edit .env with your real DATABASE_URL and SESSION_SECRET
+npx prisma db push     # creates the tables
+npm run db:seed        # loads the sample brands/models/accessories + admin user
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Visit `http://localhost:3000` for the storefront and `http://localhost:3000/admin/login` for the
+admin panel. The seed script creates the admin account from `ADMIN_USERNAME` /
+`ADMIN_PASSWORD` in `.env` (defaults to `admin` / `ChangeMe123!` — change this immediately).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Generate a `SESSION_SECRET` with:
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+```bash
+openssl rand -base64 32
+```
 
-## Learn More
+## Deploying to Railway
 
-To learn more about Next.js, take a look at the following resources:
+1. Push this folder to a GitHub repository (see below).
+2. In Railway: **New Project → Deploy from GitHub repo**, pick this repo.
+3. Add a **PostgreSQL** database to the same project (New → Database → PostgreSQL).
+4. On the app service, set these variables (Settings → Variables):
+   - `DATABASE_URL` → `${{Postgres.DATABASE_URL}}` (references the Postgres plugin)
+   - `SESSION_SECRET` → a long random string (see command above)
+   - `ADMIN_USERNAME` → your chosen admin username
+   - `ADMIN_PASSWORD` → your chosen admin password
+5. Railway builds automatically via `npm run build` (which runs `prisma generate` first via the
+   `postinstall`/`build` scripts).
+6. After the first deploy, run the migration + seed once, either via Railway's web shell for the
+   service, or via the Railway CLI from your machine:
+   ```bash
+   railway run npm run db:push
+   railway run npm run db:seed
+   ```
+7. Generate a public domain for the service (Settings → Networking → Generate Domain).
+8. **Change the admin password** after your first login — the seed script only sets it once.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Pushing this folder to GitHub
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+From inside this folder:
 
-## Deploy on Vercel
+```bash
+git remote add origin https://github.com/<your-username>/<your-repo>.git
+git push -u origin main
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+(The repository already has an initial commit and its default branch is `main`.)
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Admin features
+
+- **Dashboard** — orders by status, low-stock alerts, inventory value, potential profit.
+- **Brands & models** — add/edit/hide brands, add/edit/hide models with model-year ranges.
+- **Accessories & stock** — per-accessory quantity, storage location, buy price, sell price
+  (profit per unit is computed automatically), category, description, image URL, and
+  visibility toggle. Filterable by brand/model/name.
+- **Orders** — filter by status (Submitted, Confirmed, Processing, Shipped, Delivered,
+  Canceled), search by order number/name/phone, view full order detail, and change status.
+  Canceling an order automatically restocks its items; reactivating a canceled order deducts
+  them again.
+
+## Notes on the sample catalog
+
+`prisma/seed.ts` includes placeholder brands/models/accessories with illustrative USD prices —
+edit or replace them freely from the admin panel, or edit the seed file and re-run
+`npm run db:seed` (it's idempotent — it won't duplicate existing brands/models/SKUs).
