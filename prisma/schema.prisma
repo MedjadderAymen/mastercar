@@ -1,0 +1,97 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Brand {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  slug      String   @unique
+  logoUrl   String?
+  isActive  Boolean  @default(true)
+  models    Model[]
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model Model {
+  id          String      @id @default(cuid())
+  name        String
+  slug        String
+  yearFrom    Int?
+  yearTo      Int?
+  imageUrl    String?
+  isActive    Boolean     @default(true)
+  brandId     String
+  brand       Brand       @relation(fields: [brandId], references: [id], onDelete: Cascade)
+  accessories Accessory[]
+  createdAt   DateTime    @default(now())
+  updatedAt   DateTime    @updatedAt
+
+  @@unique([brandId, slug])
+}
+
+model Accessory {
+  id              String      @id @default(cuid())
+  sku             String      @unique
+  name            String
+  description     String?
+  imageUrl        String?
+  category        String?
+  buyPrice        Decimal     @db.Decimal(10, 2)
+  sellPrice       Decimal     @db.Decimal(10, 2)
+  quantity        Int         @default(0)
+  storageLocation String?
+  isActive        Boolean     @default(true)
+  modelId         String
+  model           Model       @relation(fields: [modelId], references: [id], onDelete: Cascade)
+  orderItems      OrderItem[]
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+}
+
+enum OrderStatus {
+  SUBMITTED
+  CONFIRMED
+  PROCESSING
+  SHIPPED
+  DELIVERED
+  CANCELED
+}
+
+model Order {
+  id           String      @id @default(cuid())
+  orderNumber  String      @unique
+  customerName String
+  phone        String
+  address      String
+  city         String
+  notes        String?
+  status       OrderStatus @default(SUBMITTED)
+  totalAmount  Decimal     @db.Decimal(10, 2)
+  items        OrderItem[]
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+}
+
+model OrderItem {
+  id           String    @id @default(cuid())
+  orderId      String
+  order        Order     @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  accessoryId  String?
+  accessory    Accessory? @relation(fields: [accessoryId], references: [id], onDelete: SetNull)
+  nameSnapshot String
+  unitPrice    Decimal   @db.Decimal(10, 2)
+  quantity     Int
+}
+
+model Admin {
+  id           String   @id @default(cuid())
+  username     String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
